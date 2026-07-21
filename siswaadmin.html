@@ -204,8 +204,8 @@
   <div class="lock-box">
     <div class="lock-badge">14</div>
     <h2>Dashboard Admin</h2>
-    <p>SMP NEGERI 14 TARAKAN &mdash; masuk dengan akun admin untuk melihat data siswa.</p>
-    <input type="email" id="admin-email" placeholder="Email admin" autocomplete="username">
+    <p>SMP NEGERI 14 TARAKAN &mdash; masuk sebagai Admin atau Wali Kelas.</p>
+    <input type="text" id="admin-email" placeholder="Email admin / Username wali kelas" autocomplete="username">
     <input type="password" id="admin-password" placeholder="Kata sandi" autocomplete="current-password" onkeydown="if(event.key==='Enter')tryUnlock()">
     <div class="lock-err" id="lock-err"></div>
     <button class="btn primary" id="unlock-btn" style="width:100%;" onclick="tryUnlock()">Masuk</button>
@@ -218,17 +218,19 @@
     <div class="brand-badge">14</div>
     <div class="brand-text"><strong>SMP NEGERI 14 TARAKAN</strong><span>Dashboard Admin &middot; Pendataan Siswa</span></div>
     <div class="spacer"></div>
+    <span id="user-info" style="font-size:12.5px;font-weight:600;color:var(--ink);margin-right:4px;"></span>
     <button class="logout-link" onclick="lock()">Keluar</button>
   </header>
 
   <div class="wrap">
+    <div id="role-banner" style="display:none;align-items:center;gap:8px;background:var(--gold-soft);border:1px solid var(--stamp-gold);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;margin-bottom:16px;"></div>
     <div class="page-head">
       <div>
         <h1>Data Siswa Baru</h1>
         <p>Tahun Ajaran 2026/2027 &middot; tersambung langsung ke Supabase</p>
       </div>
       <div class="head-actions">
-        <button class="btn primary" onclick="openClassModal()">&#127891; Pembagian Kelas 81&ndash;87</button>
+        <button class="btn primary admin-only" onclick="openClassModal()">&#127891; Pembagian Kelas 81&ndash;87</button>
         <button class="btn ghost" onclick="openIncompleteModal()">&#9888; Cek NISN/Sekolah Asal Kosong</button>
         <button class="btn ghost" onclick="loadData()">&#8635; Muat Ulang</button>
         <button class="btn ghost" onclick="exportCSV()">&#8681; Ekspor CSV</button>
@@ -309,7 +311,7 @@
   </div>
   <div class="drawer-body" id="drawer-body"></div>
   <div class="drawer-foot">
-    <button class="btn danger small" onclick="deleteCurrentStudent()">Hapus Data</button>
+    <button class="btn danger small admin-only" onclick="deleteCurrentStudent()">Hapus Data</button>
     <div style="display:flex;gap:8px;">
       <button class="btn ghost small" id="edit-toggle-btn" onclick="toggleEditMode()">Edit</button>
       <button class="btn primary small" id="save-btn" style="display:none;" onclick="saveCurrentStudent()">Simpan Perubahan</button>
@@ -485,6 +487,9 @@ const STATUS_LABEL = {lengkap:'Lengkap', sebagian:'Sebagian', kosong:'Belum Isi'
 
 /* ============ STATE ============ */
 let students = [];
+let myKelas = sessionStorage.getItem('my-kelas') || null;
+if(myKelas === '') myKelas = null;
+let myNama = sessionStorage.getItem('my-nama') || null;
 let currentDetail = null;
 let editMode = false;
 let currentPage = 1;
@@ -492,11 +497,13 @@ let totalPagesGlobal = 1;
 
 /* ============ LOCK ============ */
 async function tryUnlock(){
-  const email = document.getElementById('admin-email').value.trim();
+  let email = document.getElementById('admin-email').value.trim();
   const password = document.getElementById('admin-password').value;
   const errEl = document.getElementById('lock-err');
   const btn = document.getElementById('unlock-btn');
-  if(!email || !password){ errEl.textContent = 'Isi email dan kata sandi.'; return; }
+  if(!email || !password){ errEl.textContent = 'Isi email/username dan kata sandi.'; return; }
+  // wali kelas login pakai username biasa (tanpa @) -> otomatis disambung ke domain akun mereka
+  if(!email.includes('@')) email = email + '@piket.local';
   errEl.textContent = '';
   btn.disabled = true; btn.textContent = 'Memeriksa...';
   try{
@@ -507,24 +514,69 @@ async function tryUnlock(){
     });
     const data = await res.json();
     if(!res.ok || !data.access_token){
-      throw new Error(data.error_description || data.msg || 'Email atau kata sandi salah.');
+      throw new Error(data.error_description || data.msg || 'Email/username atau kata sandi salah.');
     }
     adminToken = data.access_token;
     sessionStorage.setItem('admin-token', adminToken);
-    enterApp();
+    await enterApp();
   }catch(err){
     errEl.textContent = err.message;
   }
   btn.disabled = false; btn.textContent = 'Masuk';
 }
-function enterApp(){
+async function detectRole(){
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/current_wali_info`, {
+      method:'POST', headers: authHeaders(), body: JSON.stringify({})
+    });
+    if(res.ok){
+      const rows = await res.json();
+      if(rows && rows[0] && rows[0].kelas){
+        myKelas = rows[0].kelas;
+        myNama = rows[0].nama || '';
+      } else {
+        myKelas = null; myNama = null;
+      }
+    } else {
+      myKelas = null; myNama = null;
+    }
+  }catch(e){ myKelas = null; myNama = null; }
+  sessionStorage.setItem('my-kelas', myKelas || '');
+  sessionStorage.setItem('my-nama', myNama || '');
+  applyRoleUI();
+}
+function applyRoleUI(){
+  const roleBanner = document.getElementById('role-banner');
+  const userInfo = document.getElementById('user-info');
+  const adminOnlyEls = document.querySelectorAll('.admin-only');
+  if(myKelas){
+    roleBanner.style.display = 'flex';
+    roleBanner.textContent = `\u{1F464} Masuk sebagai Wali Kelas ${myKelas} \u2014 hanya menampilkan siswa kelas ini`;
+    userInfo.textContent = `${myNama || 'Wali Kelas'} (${myKelas.replace('.','-')})`;
+    adminOnlyEls.forEach(el => el.style.display = 'none');
+    const rombelSel = document.getElementById('filter-rombel');
+    if(rombelSel){ rombelSel.value = myKelas; rombelSel.disabled = true; }
+  } else {
+    roleBanner.style.display = 'none';
+    userInfo.textContent = 'Admin';
+    adminOnlyEls.forEach(el => el.style.display = '');
+    const rombelSel = document.getElementById('filter-rombel');
+    if(rombelSel){ rombelSel.disabled = false; }
+  }
+}
+async function enterApp(){
   document.getElementById('lock-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  await detectRole();
   loadData();
 }
 function lock(){
   adminToken = '';
+  myKelas = null;
+  myNama = null;
   sessionStorage.removeItem('admin-token');
+  sessionStorage.removeItem('my-kelas');
+  sessionStorage.removeItem('my-nama');
   document.getElementById('app').style.display = 'none';
   document.getElementById('lock-screen').style.display = 'flex';
   document.getElementById('admin-password').value = '';
@@ -671,7 +723,7 @@ function renderTable(){
       <td class="sub-cell">${s.tanggal_update || '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
       <td class="row-actions" onclick="event.stopPropagation();">
         <button onclick="openDrawer('${s.id}')" title="Lihat">Lihat</button>
-        <button onclick="deleteStudentRow('${s.id}','${(s.nama||'').replace(/'/g,"\\'")}')" title="Hapus">Hapus</button>
+        ${myKelas ? '' : `<button onclick="deleteStudentRow('${s.id}','${(s.nama||'').replace(/'/g,"\\'")}')" title="Hapus">Hapus</button>`}
       </td>
     </tr>`;
   }).join('');
@@ -789,9 +841,9 @@ function csvEscape(v){
   return v;
 }
 /* ============ PEMBAGIAN KELAS 81-87 ============ */
-const CLASS_LIST = ['Kelas 81','Kelas 82','Kelas 83','Kelas 84','Kelas 85','Kelas 86','Kelas 87'];
+const CLASS_LIST = ['VII.1','VII.2','VII.3','VII.4','VII.5','VII.6','VII.7'];
 const CLASS_CAP = 32;
-const NON_ISLAM_CLASSES = new Set(CLASS_LIST.slice(0,4)); // Kelas 81-84
+const NON_ISLAM_CLASSES = new Set(CLASS_LIST.slice(0,4)); // VII.1-VII.4
 const TARGET_PRESTASI = 17;
 let prestasiSelection = new Set();
 let classAssignmentResult = null; // { classes:[{name,members,L,P,prestasi,nonIslam}], unassigned:[] }
