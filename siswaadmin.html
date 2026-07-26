@@ -418,7 +418,7 @@ let adminToken = sessionStorage.getItem('admin-token') || '';
 /* ============ FIELD GROUPS (untuk panel detail) ============ */
 const GROUPS = [
   { title:'Data Diri', keys:['nama','nipd','jk','nisn','tempat_lahir','tanggal_lahir','nik','agama','anak_ke','sekolah_asal','tahun_masuk','kebutuhan_khusus'] },
-  { title:'Alamat & Domisili', keys:['alamat','rt','rw','dusun','kelurahan','kecamatan','kode_pos','jenis_tinggal','alat_transportasi','lintang','bujur','jarak_rumah'] },
+  { title:'Alamat & Domisili', keys:['alamat','rt','rw','dusun','kelurahan','kecamatan','kode_pos','jenis_tinggal','alat_transportasi','lintang','bujur','jarak_rumah','jarak_tempuh'] },
   { title:'Kontak', keys:['telepon','hp','email'] },
   { title:'Data Ayah', keys:['nama_ayah','ayah_tahun_lahir','ayah_nik','ayah_pendidikan','ayah_pekerjaan','ayah_penghasilan'] },
   { title:'Data Ibu', keys:['nama_ibu','ibu_tahun_lahir','ibu_nik','ibu_pendidikan','ibu_pekerjaan','ibu_penghasilan'] },
@@ -433,7 +433,7 @@ const LABELS = {
   tanggal_lahir:'Tanggal Lahir', nik:'NIK', agama:'Agama', anak_ke:'Anak ke-', sekolah_asal:'Sekolah Asal',
   tahun_masuk:'Tahun Masuk', kebutuhan_khusus:'Kebutuhan Khusus', alamat:'Alamat', rt:'RT', rw:'RW',
   dusun:'Dusun', kelurahan:'Kelurahan', kecamatan:'Kecamatan', kode_pos:'Kode Pos', jenis_tinggal:'Jenis Tinggal',
-  alat_transportasi:'Alat Transportasi', lintang:'Lintang', bujur:'Bujur', jarak_rumah:'Jarak Rumah (KM)',
+  alat_transportasi:'Alat Transportasi', lintang:'Lintang', bujur:'Bujur', jarak_rumah:'Jarak Rumah (KM)', jarak_tempuh:'Jarak Tempuh',
   telepon:'Telepon', hp:'No. HP', email:'E-Mail', nama_ayah:'Nama Ayah', ayah_tahun_lahir:'Tahun Lahir Ayah',
   ayah_nik:'NIK Ayah', ayah_pendidikan:'Pendidikan Ayah', ayah_pekerjaan:'Pekerjaan Ayah', ayah_penghasilan:'Penghasilan Ayah',
   nama_ibu:'Nama Ibu', ibu_tahun_lahir:'Tahun Lahir Ibu', ibu_nik:'NIK Ibu', ibu_pendidikan:'Pendidikan Ibu',
@@ -748,6 +748,10 @@ function closeDrawer(){
   currentDetail = null;
 }
 
+const PLACEHOLDERS = {
+  jarak_tempuh: 'cth: 0 jam 0 menit',
+};
+
 function renderDrawerBody(){
   const body = document.getElementById('drawer-body');
   body.innerHTML = GROUPS.map((g,gi)=>{
@@ -763,7 +767,7 @@ function renderDrawerBody(){
             </select></div>`;
         }
         return `<div class="drow"><span class="dk">${LABELS[k]||k}</span>
-          <input value="${v.replace(/"/g,'&quot;')}" oninput="currentDetail['${k}']=this.value"></div>`;
+          <input value="${v.replace(/"/g,'&quot;')}" placeholder="${PLACEHOLDERS[k]||''}" oninput="currentDetail['${k}']=this.value"></div>`;
       }
       return `<div class="drow"><span class="dk">${LABELS[k]||k}</span><span class="dv ${v?'':'empty'}">${v||'belum diisi'}</span></div>`;
     }).join('');
