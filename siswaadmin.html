@@ -69,6 +69,24 @@
   .brand-strip .spacer{flex:1;}
   .brand-strip .logout-link{background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;text-decoration:underline;}
 
+  .nav-menu{position:relative;}
+  .nav-btn{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;padding:8px 14px;
+    border-radius:8px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+  }
+  .nav-btn:hover{border-color:var(--stamp-red);color:var(--stamp-red);}
+  .nav-dropdown{
+    position:absolute;top:calc(100% + 6px);left:0;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;box-shadow:var(--shadow);min-width:230px;padding:6px;display:none;z-index:70;
+  }
+  .nav-dropdown.show{display:block;}
+  .nav-dropdown button{
+    width:100%;text-align:left;background:none;border:none;padding:10px 12px;font-size:13px;
+    border-radius:7px;cursor:pointer;color:var(--ink);font-family:'Inter',sans-serif;
+  }
+  .nav-dropdown button:hover{background:var(--paper);color:var(--stamp-red);}
+
   .wrap{max-width:1280px;margin:0 auto;padding:26px 24px 60px;}
   .page-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
   .page-head h1{font-size:26px;}
@@ -92,6 +110,12 @@
   /* ===== STATS ===== */
   .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
   @media (max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat-grid.compact{
+    display:flex;gap:10px;margin-bottom:0;flex-wrap:wrap;
+  }
+  .stat-grid.compact .stat-card{padding:8px 14px;min-width:auto;}
+  .stat-grid.compact .n{font-size:19px;}
+  .stat-grid.compact .l{font-size:10px;white-space:nowrap;}
   .stat-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:0 1px 2px rgba(31,59,87,0.04);}
   .stat-card .n{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;}
   .stat-card .l{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
@@ -101,6 +125,15 @@
 
   /* ===== TOOLBAR ===== */
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+  .stat-mini-group{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}
+  .stat-mini{
+    display:flex;align-items:baseline;gap:6px;background:var(--paper);border:1px solid var(--line);
+    border-radius:8px;padding:7px 12px;white-space:nowrap;
+  }
+  .stat-mini b{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--ink);}
+  .stat-mini span{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+  .stat-mini.success b{color:var(--success);}
+  .stat-mini.warn b{color:var(--warn);}
   .toolbar input[type=search]{
     flex:1;min-width:220px;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:13.5px;background:var(--card);
   }
@@ -217,6 +250,18 @@
   <header class="brand-strip">
     <div class="brand-badge">14</div>
     <div class="brand-text"><strong>SMP NEGERI 14 TARAKAN</strong><span>Dashboard Admin &middot; Pendataan Siswa</span></div>
+
+    <div class="nav-menu">
+      <button class="nav-btn" onclick="toggleDataMenu(event)">Data &#9662;</button>
+      <div class="nav-dropdown" id="data-dropdown">
+        <button onclick="closeDataMenu(); openIncompleteModal();">&#9888; Cek NISN/Sekolah Asal Kosong</button>
+        <button onclick="closeDataMenu(); openPhysicalModal();">&#128207; Data Fisik &amp; Jarak</button>
+        <button class="admin-only" onclick="closeDataMenu(); openClassModal();">&#127891; Pembagian Kelas</button>
+        <button onclick="closeDataMenu(); exportCSV();">&#8681; Ekspor CSV</button>
+      </div>
+    </div>
+    <button class="nav-btn" onclick="loadData()">&#8635; Muat Ulang</button>
+
     <div class="spacer"></div>
     <span id="user-info" style="font-size:12.5px;font-weight:600;color:var(--ink);margin-right:4px;"></span>
     <button class="logout-link" onclick="lock()">Keluar</button>
@@ -227,21 +272,14 @@
     <div class="page-head">
       <div>
         <h1>Data Siswa Baru</h1>
-        <p>Tahun Ajaran 2026/2027 &middot; tersambung langsung ke Supabase</p>
+        <p>Tahun Ajaran 2026/2027</p>
       </div>
-      <div class="head-actions">
-        <button class="btn primary admin-only" onclick="openClassModal()">&#127891; Pembagian Kelas 81&ndash;87</button>
-        <button class="btn ghost" onclick="openIncompleteModal()">&#9888; Cek NISN/Sekolah Asal Kosong</button>
-        <button class="btn ghost" onclick="loadData()">&#8635; Muat Ulang</button>
-        <button class="btn ghost" onclick="exportCSV()">&#8681; Ekspor CSV</button>
+      <div class="stat-grid compact">
+        <div class="stat-card"><div class="n" id="st-total">-</div><div class="l">Total Siswa</div></div>
+        <div class="stat-card success"><div class="n" id="st-lengkap">-</div><div class="l">Data Lengkap</div></div>
+        <div class="stat-card warn"><div class="n" id="st-sebagian">-</div><div class="l">Sebagian Terisi</div></div>
+        <div class="stat-card"><div class="n" id="st-kosong">-</div><div class="l">Belum Mengisi</div></div>
       </div>
-    </div>
-
-    <div class="stat-grid">
-      <div class="stat-card"><div class="n" id="st-total">-</div><div class="l">Total Siswa</div></div>
-      <div class="stat-card success"><div class="n" id="st-lengkap">-</div><div class="l">Data Lengkap</div></div>
-      <div class="stat-card warn"><div class="n" id="st-sebagian">-</div><div class="l">Sebagian Terisi</div></div>
-      <div class="stat-card"><div class="n" id="st-kosong">-</div><div class="l">Belum Mengisi</div></div>
     </div>
 
     <div class="toolbar">
@@ -253,13 +291,12 @@
         <option value="sebagian">Sebagian Terisi</option>
         <option value="kosong">Belum Mengisi</option>
       </select>
-    </div>
-
-    <div class="stat-grid" id="class-stats" style="display:none;margin-bottom:16px;">
-      <div class="stat-card"><div class="n" id="cs-total">-</div><div class="l" id="cs-total-label">Total Siswa</div></div>
-      <div class="stat-card success"><div class="n" id="cs-lengkap">-</div><div class="l">Data Lengkap</div></div>
-      <div class="stat-card warn"><div class="n" id="cs-sebagian">-</div><div class="l">Sebagian Terisi</div></div>
-      <div class="stat-card"><div class="n" id="cs-kosong">-</div><div class="l">Belum Terisi</div></div>
+      <div class="stat-mini-group" id="class-stats" style="display:none;">
+        <div class="stat-mini"><b id="cs-total">-</b><span id="cs-total-label">Total Siswa</span></div>
+        <div class="stat-mini success"><b id="cs-lengkap">-</b><span>Data Lengkap</span></div>
+        <div class="stat-mini warn"><b id="cs-sebagian">-</b><span>Sebagian Terisi</span></div>
+        <div class="stat-mini"><b id="cs-kosong">-</b><span>Belum Mengisi</span></div>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -315,6 +352,41 @@
     <div style="display:flex;gap:8px;">
       <button class="btn ghost small" id="edit-toggle-btn" onclick="toggleEditMode()">Edit</button>
       <button class="btn primary small" id="save-btn" style="display:none;" onclick="saveCurrentStudent()">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="physical-modal">
+  <div class="modal-box" style="max-width:920px;">
+    <div class="modal-box-head">
+      <div>
+        <h2>Data Fisik &amp; Jarak Siswa</h2>
+        <p>Tinggi/berat badan, lingkar kepala, jarak &amp; waktu tempuh ke sekolah, jumlah saudara kandung.</p>
+      </div>
+      <button class="close" onclick="closePhysicalModal()">&times;</button>
+    </div>
+    <div class="modal-box-body" style="padding:14px 22px;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+        <label class="sub-cell" style="font-weight:600;">Pilih Kelas:</label>
+        <select id="physical-rombel-filter" onchange="renderPhysicalTable()"><option value="">Semua Kelas</option></select>
+        <button class="btn ghost small" onclick="printPhysicalTable()">&#128424; Print</button>
+        <span class="sub-cell" id="physical-count" style="margin-left:auto;"></span>
+      </div>
+      <div class="table-scroll" style="max-height:60vh;overflow-y:auto;">
+        <table>
+          <thead><tr>
+            <th style="width:44px;">No.</th><th>Nama</th><th>Kelas</th><th>NISN</th><th>Tinggi Badan</th><th>Berat Badan</th><th>Lingkar Kepala</th><th>Jarak Rumah</th><th>Waktu Tempuh</th><th>Jml. Saudara</th>
+          </tr></thead>
+          <tbody id="physical-table-body"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="physical-empty" style="display:none;">
+        <div class="big">Tidak ada data untuk kelas ini</div>
+      </div>
+    </div>
+    <div class="modal-box-foot">
+      <span class="sub-cell" id="physical-info">-</span>
+      <button class="btn ghost small" onclick="exportPhysicalCSV()">&#8681; Ekspor CSV</button>
     </div>
   </div>
 </div>
@@ -570,6 +642,21 @@ async function enterApp(){
   await detectRole();
   loadData();
 }
+/* ============ NAV DROPDOWN "DATA" ============ */
+function toggleDataMenu(e){
+  e.stopPropagation();
+  document.getElementById('data-dropdown').classList.toggle('show');
+}
+function closeDataMenu(){
+  document.getElementById('data-dropdown').classList.remove('show');
+}
+document.addEventListener('click', function(e){
+  const menu = document.getElementById('data-dropdown');
+  if(menu && menu.classList.contains('show') && !menu.contains(e.target)){
+    menu.classList.remove('show');
+  }
+});
+
 function lock(){
   adminToken = '';
   myKelas = null;
@@ -642,11 +729,11 @@ function renderStats(){
 function renderClassStats(rombelFilter){
   const box = document.getElementById('class-stats');
   if(!rombelFilter){ box.style.display = 'none'; return; }
-  box.style.display = 'grid';
+  box.style.display = 'flex';
   const inClass = students.filter(s=>s.rombel===rombelFilter);
   const counts = {lengkap:0, sebagian:0, kosong:0};
   inClass.forEach(s=>counts[completionStatus(s)]++);
-  document.getElementById('cs-total-label').textContent = `Total Siswa \u2014 ${rombelFilter}`;
+  document.getElementById('cs-total-label').textContent = `Total ${rombelFilter}`;
   document.getElementById('cs-total').textContent = inClass.length;
   document.getElementById('cs-lengkap').textContent = counts.lengkap;
   document.getElementById('cs-sebagian').textContent = counts.sebagian;
@@ -1113,6 +1200,116 @@ async function applyClassAssignment(){
   btn.disabled = false;
   populateRombelFilter(); renderStats(); renderTable();
   closeClassModal();
+}
+
+/* ============ DATA FISIK & JARAK SISWA ============ */
+const PHYSICAL_COLS = ['nisn','tinggi_badan','berat_badan','lingkar_kepala','jarak_rumah','jarak_tempuh','jml_saudara'];
+
+function openPhysicalModal(){
+  const sel = document.getElementById('physical-rombel-filter');
+  const rombels = [...new Set(students.map(s=>s.rombel).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Semua Kelas</option>' + rombels.map(r=>`<option value="${r}">${r}</option>`).join('');
+  renderPhysicalTable();
+  document.getElementById('physical-modal').classList.add('show');
+}
+function closePhysicalModal(){
+  document.getElementById('physical-modal').classList.remove('show');
+}
+function getPhysicalRows(){
+  const rombelFilter = document.getElementById('physical-rombel-filter').value;
+  return students
+    .filter(s => !rombelFilter || s.rombel === rombelFilter)
+    .sort((a,b)=>(a.nama||'').localeCompare(b.nama||'', 'id'));
+}
+function renderPhysicalTable(){
+  const list = getPhysicalRows();
+  const body = document.getElementById('physical-table-body');
+  const emptyEl = document.getElementById('physical-empty');
+  document.getElementById('physical-count').textContent = `${list.length} siswa`;
+  document.getElementById('physical-info').textContent = `${list.length} siswa ditampilkan`;
+  if(list.length===0){
+    body.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  body.innerHTML = list.map((s,i)=>`
+    <tr onclick="openDrawer('${s.id}')" style="cursor:pointer;">
+      <td class="sub-cell mono">${i+1}</td>
+      <td class="name-cell">${s.nama||'-'}</td>
+      <td>${s.rombel||'-'}</td>
+      <td>${s.nisn || '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+      <td>${s.tinggi_badan ? s.tinggi_badan+' cm' : '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+      <td>${s.berat_badan ? s.berat_badan+' kg' : '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+      <td>${s.lingkar_kepala ? s.lingkar_kepala+' cm' : '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+      <td>${s.jarak_rumah ? s.jarak_rumah+' km' : '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+      <td>${s.jarak_tempuh || '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+      <td>${s.jml_saudara || '<span style="color:#BFC5CE;">&mdash;</span>'}</td>
+    </tr>`).join('');
+}
+function printPhysicalTable(){
+  const list = getPhysicalRows();
+  const rombelFilter = document.getElementById('physical-rombel-filter').value;
+  const judulKelas = rombelFilter || 'Semua Kelas';
+  if(list.length===0){ showToast('Tidak ada data untuk dicetak'); return; }
+
+  const rows = list.map((s,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td style="text-align:left;">${s.nama||'-'}</td>
+      <td>${s.rombel||'-'}</td>
+      <td>${s.nisn||'-'}</td>
+      <td>${s.tinggi_badan||'-'}</td>
+      <td>${s.berat_badan||'-'}</td>
+      <td>${s.lingkar_kepala||'-'}</td>
+      <td>${s.jarak_rumah||'-'}</td>
+      <td>${s.jarak_tempuh||'-'}</td>
+      <td>${s.jml_saudara||'-'}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+  <html lang="id"><head><meta charset="UTF-8"><title>Data Fisik & Jarak Siswa - ${judulKelas}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#1C2430;}
+    h1{font-size:16px;margin:0;}
+    h2{font-size:13px;margin:2px 0 14px;font-weight:normal;color:#5B6472;}
+    table{border-collapse:collapse;width:100%;font-size:11.5px;}
+    th,td{border:1px solid #999;padding:6px 8px;text-align:center;}
+    thead th{background:#1F3B57;color:#fff;}
+    tfoot td{text-align:right;font-size:11px;padding-top:10px;border:none;}
+    @media print{ @page{ size:landscape; margin:14mm; } }
+  </style></head>
+  <body>
+    <h1>SMP NEGERI 14 TARAKAN</h1>
+    <h2>Data Fisik &amp; Jarak Siswa &mdash; ${judulKelas} (${list.length} siswa)</h2>
+    <table>
+      <thead><tr>
+        <th>No</th><th>Nama</th><th>Kelas</th><th>NISN</th><th>Tinggi Badan</th><th>Berat Badan</th><th>Lingkar Kepala</th><th>Jarak Rumah</th><th>Waktu Tempuh</th><th>Jml. Saudara</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="font-size:10.5px;color:#5B6472;margin-top:16px;">Dicetak: ${new Date().toLocaleString('id-ID')}</p>
+  </body></html>`;
+
+  const printWin = window.open('', '_blank');
+  if(!printWin){ showToast('Popup diblokir browser, izinkan popup untuk mencetak'); return; }
+  printWin.document.write(html);
+  printWin.document.close();
+  printWin.onload = function(){ printWin.focus(); printWin.print(); };
+}
+
+function exportPhysicalCSV(){
+  const list = getPhysicalRows();
+  if(list.length===0){ showToast('Tidak ada data untuk diekspor'); return; }
+  const header = ['No','Nama','Kelas','NISN','Tinggi Badan','Berat Badan','Lingkar Kepala','Jarak Rumah ke Sekolah','Waktu Tempuh','Jml. Saudara Kandung'].join(',');
+  const rows = list.map((s,i)=>[i+1, s.nama, s.rombel, s.nisn, s.tinggi_badan, s.berat_badan, s.lingkar_kepala, s.jarak_rumah, s.jarak_tempuh, s.jml_saudara].map(csvEscape).join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'data-fisik-jarak-siswa.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV diunduh');
 }
 
 /* ============ CEK DATA BELUM LENGKAP (NISN / SEKOLAH ASAL) ============ */
