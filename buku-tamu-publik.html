@@ -153,11 +153,9 @@
   }
 
   function isSiswaAktif(s){
-    const v = s.status_alumni;
+    const v = s.status_alumni; // dialiaskan dari kolom status_siswa (siswa01)
     if(v === null || v === undefined || v === '') return true;
-    if(typeof v === 'boolean') return !v;
-    const t = String(v).trim().toLowerCase();
-    return !['true','1','alumni','ya','yes','y','lulus'].includes(t);
+    return String(v).trim().toLowerCase() === 'aktif';
   }
 
   function setupSignaturePad(canvas){
@@ -325,7 +323,7 @@
       try{
         const [kelasRes, siswaRes] = await Promise.all([
           sb(`kelas?select=id,kls&order=id.asc`),
-          sb(`siswa?select=nama,kelas,status_alumni&order=kelas.asc,nama.asc`),
+          sb(`v_siswa_publik?select=nama,kelas:rombel,status_alumni:status_siswa&order=rombel.asc,nama.asc`),
         ]);
         kelasList = (kelasRes||[]).map(k=>k.kls).filter(Boolean);
         siswaList = siswaRes || [];
