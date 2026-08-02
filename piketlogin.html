@@ -520,7 +520,7 @@
   async function boot(){
     try{
       const [siswaRes, waliRes, userRes, infoRes, alasanRes, kelasRes, tahunRes, guruTahunRes, tahunAktifRes, pelajaranRes, jadwalPiketRes] = await Promise.all([
-        sb(`siswa?select=*&order=kelas.asc,nama.asc`),
+        sb(`siswa01?select=id,nama,nisn,jk,kelas:rombel,status_alumni:status_siswa&order=rombel.asc,nama.asc`),
         sb(`wali_kelas?select=*&order=kelas.asc`),
         sb(`profiles?select=user_name,nama,mapel`),
         sb(`info_landing?select=*&order=jenis.asc,urutan.asc`),
@@ -571,12 +571,9 @@
 
   // Mengenali berbagai kemungkinan format nilai status_alumni (boolean, teks, angka)
   function isSiswaAktif(s){
-    const v = s.status_alumni;
+    const v = s.status_alumni; // dialiaskan dari kolom status_siswa (siswa01)
     if(v === null || v === undefined || v === '') return true;
-    if(typeof v === 'boolean') return !v;
-    const t = String(v).trim().toLowerCase();
-    const alumniValues = ['true','1','alumni','ya','yes','y','lulus'];
-    return !alumniValues.includes(t);
+    return String(v).trim().toLowerCase() === 'aktif';
   }
 
   const operatorNamaCache = {};
@@ -2083,23 +2080,23 @@
     return `
       <div class="panel">
         <h2>Data Siswa</h2>
-        <div class="desc">Tambah atau perbarui data siswa. NISN dipakai sebagai acuan saat mencatat piket.</div>
+        <div class="desc">Tambah atau perbarui data inti siswa (data detail lengkap dikelola lewat import Dapodik ke tabel siswa01). NISN dipakai sebagai acuan saat mencatat piket.</div>
         <form id="siswa-form" class="form-grid">
           <div><label>Nama Siswa</label><input type="text" id="s-nama" required/></div>
           <div><label>NISN</label><input type="text" id="s-nisn" class="mono" required/></div>
-          <div><label>Kelas</label><input type="text" id="s-kelas" placeholder="Contoh: X-A" required/></div>
-          <div><label>Tahun Masuk</label><input type="number" id="s-tahun" placeholder="2024"/></div>
+          <div><label>Kelas (Rombel)</label><input type="text" id="s-kelas" placeholder="Contoh: VIII.1" required/></div>
           <div>
-            <label>Gender</label>
+            <label>Jenis Kelamin</label>
             <select id="s-gender"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
           </div>
-          <div><label>Agama</label><input type="text" id="s-agama"/></div>
-          <div><label>HP Siswa</label><input type="text" id="s-hpsiswa" class="mono"/></div>
-          <div><label>HP Orang Tua</label><input type="text" id="s-hportu" class="mono"/></div>
-          <div><label>Asal Sekolah</label><input type="text" id="s-asal"/></div>
           <div>
             <label>Status</label>
-            <select id="s-alumni"><option value="false">Aktif</option><option value="true">Alumni</option></select>
+            <select id="s-alumni">
+              <option value="Aktif">Aktif</option>
+              <option value="Mutasi">Mutasi</option>
+              <option value="Alumni">Alumni</option>
+              <option value="Berhenti">Berhenti</option>
+            </select>
           </div>
           <div class="full">
             <button type="submit" class="btn btn-primary" id="s-submit-btn">Tambah Siswa</button>
@@ -2112,7 +2109,7 @@
             ${(()=>{ const pg = paginateList(state.siswa, state.pageSiswa, state.pageSizeSiswa); return pg.items.length ? pg.items.map(s=>`
               <tr>
                 <td>${s.nama}</td><td class="mono">${s.nisn||'—'}</td><td>${s.kelas}</td>
-                <td>${s.status_alumni ? 'Alumni' : 'Aktif'}</td>
+                <td>${s.status_alumni || 'Aktif'}</td>
                 <td class="row-actions no-print col-aksi">
                   <button class="btn btn-quiet" data-edit-siswa="${s.id}">Edit</button>
                   <button class="btn btn-danger" data-del-siswa="${s.id}">Hapus</button>
@@ -2319,18 +2316,13 @@
     const sForm = document.getElementById('siswa-form');
     if(sForm){
       if(state.editingSiswaId){
-        const s = state.siswa.find(x=>x.id===state.editingSiswaId);
+        const s = state.siswa.find(x=>String(x.id)===String(state.editingSiswaId));
         if(s){
           document.getElementById('s-nama').value = s.nama||'';
           document.getElementById('s-nisn').value = s.nisn||'';
           document.getElementById('s-kelas').value = s.kelas||'';
-          document.getElementById('s-tahun').value = s.tahun_masuk||'';
-          document.getElementById('s-gender').value = s.gender||'L';
-          document.getElementById('s-agama').value = s.agama||'';
-          document.getElementById('s-hpsiswa').value = s.hp_siswa||'';
-          document.getElementById('s-hportu').value = s.hp_ortu||'';
-          document.getElementById('s-asal').value = s.asal_sekolah||'';
-          document.getElementById('s-alumni').value = String(!!s.status_alumni);
+          document.getElementById('s-gender').value = s.jk||'L';
+          document.getElementById('s-alumni').value = s.status_alumni||'Aktif';
           document.getElementById('s-submit-btn').textContent = 'Simpan Perubahan';
           document.getElementById('s-cancel-btn').style.display = 'inline-block';
         }
@@ -2340,38 +2332,33 @@
         const payload = {
           nama: document.getElementById('s-nama').value.trim(),
           nisn: document.getElementById('s-nisn').value.trim(),
-          kelas: document.getElementById('s-kelas').value.trim(),
-          tahun_masuk: document.getElementById('s-tahun').value ? Number(document.getElementById('s-tahun').value) : null,
-          gender: document.getElementById('s-gender').value,
-          agama: document.getElementById('s-agama').value.trim(),
-          hp_siswa: document.getElementById('s-hpsiswa').value.trim(),
-          hp_ortu: document.getElementById('s-hportu').value.trim(),
-          asal_sekolah: document.getElementById('s-asal').value.trim(),
-          status_alumni: document.getElementById('s-alumni').value === 'true',
+          rombel: document.getElementById('s-kelas').value.trim(),
+          jk: document.getElementById('s-gender').value,
+          status_siswa: document.getElementById('s-alumni').value,
         };
         const btn = document.getElementById('s-submit-btn'); btn.disabled = true;
         try{
           if(state.editingSiswaId){
-            await sb(`siswa?id=eq.${state.editingSiswaId}`, {method:'PATCH', body: JSON.stringify(payload)});
+            await sb(`siswa01?id=eq.${state.editingSiswaId}`, {method:'PATCH', body: JSON.stringify(payload)});
             showToast('Data siswa diperbarui.');
             state.editingSiswaId = null;
           } else {
-            await sb('siswa', {method:'POST', body: JSON.stringify([payload])});
+            await sb('siswa01', {method:'POST', body: JSON.stringify([payload])});
             showToast('Siswa ditambahkan.');
           }
-          state.siswa = await sb('siswa?select=*&order=kelas.asc,nama.asc') || [];
+          state.siswa = await sb('siswa01?select=id,nama,nisn,jk,kelas:rombel,status_alumni:status_siswa&order=rombel.asc,nama.asc') || [];
           renderKelola();
         }catch(err){ console.error(err); showToast('Gagal menyimpan: '+err.message, 'error'); btn.disabled=false; }
       });
       document.getElementById('s-cancel-btn').addEventListener('click', ()=>{ state.editingSiswaId=null; renderKelola(); });
       root.querySelectorAll('[data-edit-siswa]').forEach(b=>{
-        b.addEventListener('click', ()=>{ state.editingSiswaId = Number(b.dataset.editSiswa); renderKelola(); });
+        b.addEventListener('click', ()=>{ state.editingSiswaId = b.dataset.editSiswa; renderKelola(); });
       });
       root.querySelectorAll('[data-del-siswa]').forEach(b=>{
         b.addEventListener('click', async ()=>{
           if(!confirm('Hapus data siswa ini?')) return;
           try{
-            await sb(`siswa?id=eq.${b.dataset.delSiswa}`, {method:'DELETE'});
+            await sb(`siswa01?id=eq.${b.dataset.delSiswa}`, {method:'DELETE'});
             state.siswa = state.siswa.filter(s=>String(s.id)!==b.dataset.delSiswa);
             showToast('Siswa dihapus.');
             renderKelola();
